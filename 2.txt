@@ -1,0 +1,161 @@
+Introduction:
+DHCP starvation attack is an attack that targets DHCP servers whereby forged DHCP requests
+are crafted by an attacker with the intent of exhausting all available IP addresses
+that can be allocated by the DHCP server. Under this attack, legitimate network users can be denied service.
+
+This attack can done by sending alot or infinite DHCP Discover packets.
+Or by leasing all the scope of the DHCP Server.
+I choose to do that by the second option, since we have to show a lease for one of our requests in question 4.
+To do that we have to understand the process of DHCP leasing.
+The client send a DHCP Discover Packet, Then the server sends DHCP Offer Packet,
+Then the client send DHCP Request packet, Then the server sends DHCP ACK Packet.
+In my code first we have to choose an interface, Then the program sends DHCP Discover Packet,
+Then sniffing or listening to DHCP Offer for 10 seconds. If there is no answer that means that the server
+Have no fre lease. Then if there is an answer the program sends DHCP Request packet,
+Then it fakes DHCP ACK Packet.
+
+I add the ability to wait more than 10 seconds by deleting the timeout
+from the sniffing line (explained in the comments of the code)
+
+Also, this program doesn't continue to flood the server with DHCP Discover requests, for me, it was enough here.
+There is explanation in the code comments of the main function how to do that.
+
+1.
+The code is 2.py it includes code that will get the list of all the interfaces from the OS
+and will give the user the option to choose on which interface he would like to send the attack in the main function.
+2.
+The code also include the implement of the attack via Scapy module/library.
+3.
+To install the dhcpd service use this link:
+https://www.server-world.info/en/note?os=CentOS_Stream_9&p=dhcp&f=1
+The /etc/dhcp/dhcpd.conf file is not good for two interfaces so use this configuration instead:
+#
+# DHCP Server Configuration file.
+#   see /usr/share/doc/dhcp-server/dhcpd.conf.example
+#   see dhcpd.conf(5) man page
+#
+default-lease-time 600;
+max-lease-time 7200;
+INTERFACESv4="ens34";
+authoritative;
+
+subnet 192.168.10.0 netmask 255.255.255.0 {
+range 192.168.10.40 192.168.10.45;
+}
+
+To lunch the attack, install pip and scapy first as explained in the program code (first lines).
+Then run the code use "sudo" or "sudo su" command, with the command python3 2.py or python3 <file>.
+4.
+Use "cat /var/lib/dhcpd/dhcpd.leases" to see the leases that made by the attack. this is an example:
+lease 192.168.10.45 {
+  starts 5 2023/08/11 23:03:10;
+  ends 5 2023/08/11 23:13:10;
+  cltt 5 2023/08/11 23:03:10;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 2f:bb:77:9d:11:d5;
+}
+lease 192.168.10.43 {
+  starts 5 2023/08/11 23:03:11;
+  ends 5 2023/08/11 23:13:11;
+  cltt 5 2023/08/11 23:03:11;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 3d:79:7c:27:e2:7d;
+}
+lease 192.168.10.44 {
+  starts 5 2023/08/11 23:03:12;
+  ends 5 2023/08/11 23:13:12;
+  cltt 5 2023/08/11 23:03:12;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 7a:79:aa:b8:51:45;
+}
+lease 192.168.10.40 {
+  starts 5 2023/08/11 23:03:14;
+  ends 5 2023/08/11 23:13:14;
+  cltt 5 2023/08/11 23:03:14;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet db:1c:43:65:a6:4c;
+}
+lease 192.168.10.42 {
+  starts 5 2023/08/11 23:03:15;
+  ends 5 2023/08/11 23:13:15;
+  cltt 5 2023/08/11 23:03:15;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 5a:3f:24:bd:57:98;
+}
+lease 192.168.10.41 {
+  starts 5 2023/08/11 23:04:55;
+  ends 5 2023/08/11 23:14:55;
+  cltt 5 2023/08/11 23:04:55;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 00:0c:29:0e:84:92;
+  uid "\001\000\014)\016\204\222";
+}
+
+5.
+use "cat /var/log/messages" to see that we got a lot of DHCP requests.
+This is an example:
+Aug 12 01:34:54 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.41 from 00:0c:29:0e:84:92 via ens34
+Aug 12 01:34:54 localhost dhcpd[1372]: DHCPACK on 192.168.10.41 to 00:0c:29:0e:84:92 via ens34
+Aug 12 01:39:54 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.41 from 00:0c:29:0e:84:92 via ens34
+Aug 12 01:39:54 localhost dhcpd[1372]: DHCPACK on 192.168.10.41 to 00:0c:29:0e:84:92 via ens34
+Aug 12 01:44:07 localhost NetworkManager[1065]: <info>  [1691793847.5540] dhcp4 (ens33): state changed new lease, address=192.168.205.134
+Aug 12 01:44:54 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.41 from 00:0c:29:0e:84:92 via ens34
+Aug 12 01:44:54 localhost dhcpd[1372]: DHCPACK on 192.168.10.41 to 00:0c:29:0e:84:92 via ens34
+Aug 12 01:49:54 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.41 from 00:0c:29:0e:84:92 via ens34
+Aug 12 01:49:54 localhost dhcpd[1372]: DHCPACK on 192.168.10.41 to 00:0c:29:0e:84:92 via ens34
+Aug 12 01:54:54 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.41 from 00:0c:29:0e:84:92 via ens34
+Aug 12 01:54:54 localhost dhcpd[1372]: DHCPACK on 192.168.10.41 to 00:0c:29:0e:84:92 via ens34
+Aug 12 01:59:07 localhost NetworkManager[1065]: <info>  [1691794747.5541] dhcp4 (ens33): state changed new lease, address=192.168.205.134
+Aug 12 01:59:54 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.41 from 00:0c:29:0e:84:92 via ens34
+Aug 12 01:59:54 localhost dhcpd[1372]: DHCPACK on 192.168.10.41 to 00:0c:29:0e:84:92 via ens34
+Aug 12 02:03:09 localhost dhcpd[1372]: DHCPDISCOVER from 7a:a8:57:89:9d:22 via ens34
+Aug 12 02:03:10 localhost dhcpd[1372]: DHCPOFFER on 192.168.10.45 to 7a:a8:57:89:9d:22 via ens34
+Aug 12 02:03:10 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.45 (192.168.10.1) from 2f:bb:77:9d:11:d5 via ens34
+Aug 12 02:03:10 localhost dhcpd[1372]: DHCPACK on 192.168.10.45 to 2f:bb:77:9d:11:d5 via ens34
+Aug 12 02:03:10 localhost dhcpd[1372]: DHCPDISCOVER from 92:f2:31:6f:6f:24 via ens34
+Aug 12 02:03:11 localhost dhcpd[1372]: DHCPOFFER on 192.168.10.43 to 92:f2:31:6f:6f:24 via ens34
+Aug 12 02:03:11 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.43 (192.168.10.1) from 3d:79:7c:27:e2:7d via ens34
+Aug 12 02:03:11 localhost dhcpd[1372]: DHCPACK on 192.168.10.43 to 3d:79:7c:27:e2:7d via ens34
+Aug 12 02:03:11 localhost dhcpd[1372]: DHCPDISCOVER from 32:f8:da:44:fd:9e via ens34
+Aug 12 02:03:12 localhost dhcpd[1372]: DHCPOFFER on 192.168.10.44 to 32:f8:da:44:fd:9e via ens34
+Aug 12 02:03:12 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.44 (192.168.10.1) from 7a:79:aa:b8:51:45 via ens34
+Aug 12 02:03:12 localhost dhcpd[1372]: DHCPACK on 192.168.10.44 to 7a:79:aa:b8:51:45 via ens34
+Aug 12 02:03:12 localhost dhcpd[1372]: DHCPDISCOVER from 0e:12:7c:9b:54:27 via ens34
+Aug 12 02:03:13 localhost dhcpd[1372]: DHCPOFFER on 192.168.10.40 to 0e:12:7c:9b:54:27 via ens34
+Aug 12 02:03:14 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.40 (192.168.10.1) from db:1c:43:65:a6:4c via ens34
+Aug 12 02:03:14 localhost dhcpd[1372]: DHCPACK on 192.168.10.40 to db:1c:43:65:a6:4c via ens34
+Aug 12 02:03:14 localhost dhcpd[1372]: DHCPDISCOVER from ad:49:41:72:e9:35 via ens34
+Aug 12 02:03:15 localhost dhcpd[1372]: DHCPOFFER on 192.168.10.42 to ad:49:41:72:e9:35 via ens34
+Aug 12 02:03:15 localhost dhcpd[1372]: DHCPREQUEST for 192.168.10.42 (192.168.10.1) from 5a:3f:24:bd:57:98 via ens34
+Aug 12 02:03:15 localhost dhcpd[1372]: DHCPACK on 192.168.10.42 to 5a:3f:24:bd:57:98 via ens34
+Aug 12 02:03:15 localhost dhcpd[1372]: DHCPDISCOVER from d2:a4:df:b6:06:a5 via ens34: network 192.168.10.0/24: no free leases
+Aug 12 02:03:33 localhost dhcpd[1372]: DHCPDISCOVER from 3e:1b:31:22:2a:4f via ens34: network 192.168.10.0/24: no free leases
+You can see the same messages also by the command "systemctl status dhcpd"
+
+6.
+One way to prevent a DHCP starvation attack on a network is through port security.
+Port security is a layer 2 traffic control feature on switches.
+Switches learn MAC addresses when a frame is forwarded through a switch.
+By using port security, a limit of the number of source MAC addresses that a port can allow can be set.
+Penalties can be set for ports as well if an unauthorized user is using the port.
+The commands restrict, shut down, and port-security can be used to enforce these penalties.
+Second way to prevent the attack in case that there is no switch is by leasing ip address only to known clients,
+To do this use this code in dhpd.conf file:
+deny unknown-clients;
+# known-clients
+# make a list below by this format: "host <host name> { hardware ethernet <MAC Address>; }"
+# For example in my server I added this line: (Remove the line below in your server)
+host linux2 { hardware ethernet 00:0c:29:0e:84:92; }
+
